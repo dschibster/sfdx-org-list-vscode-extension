@@ -33,7 +33,7 @@ export class Org extends vscode.TreeItem {
       () => {
         return new Promise((resolve, reject) => {
           cp.exec(
-            "sfdx force:org:open -u " + this.username,
+            "sf org open -o " + this.username,
             null,
             (error, stdout, stderr) => {
               if (error) {
@@ -62,7 +62,7 @@ export class Org extends vscode.TreeItem {
           () => {
             return new Promise((resolve, reject) => {
               cp.exec(
-                `sfdx force:alias:set ${this.alias}=${this.username}`,
+                `sf alias set ${this.alias}=${this.username}`,
                 null,
                 (error, stdout, stderr) => {
                   if (error) {
@@ -100,7 +100,7 @@ export class Org extends vscode.TreeItem {
             () => {
               return new Promise((resolve, reject) => {
                 cp.exec(
-                  "sfdx force:auth:logout --noprompt -u " + this.username,
+                  "sf org logout --no-prompt -o " + this.username,
                   null,
                   (error, stdout, stderr) => {
                     if (error) {
@@ -141,7 +141,7 @@ export class Org extends vscode.TreeItem {
             () => {
               return new Promise((resolve, reject) => {
                 cp.exec(
-                  "sfdx force:org:delete --noprompt -u " + this.username,
+                  "sf org delete scratch --no-prompt -o " + this.username,
                   null,
                   (error, stdout, stderr) => {
                     if (error) {

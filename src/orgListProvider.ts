@@ -74,7 +74,7 @@ export class OrgListProvider
       () => {
         return new Promise((resolve, reject) => {
           cp.exec(
-            "sfdx force:org:list --json",
+            "sf org list --json",
             null,
             (error, stdout, stderr) => {
               if (error) {
