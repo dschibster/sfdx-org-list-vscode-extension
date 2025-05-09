@@ -1,9 +1,9 @@
 {
-  "name": "sfdx-org-list",
-  "displayName": "SFDX Org List",
+  "name": "sf-org-list",
+  "displayName": "Salesforce Org List",
   "description": "Displays a list of authenticated orgs for quick logins",
-  "version": "1.1.0",
-  "publisher": "philstennett",
+  "version": "1.1.1",
+  "publisher": "dennisgrzyb",
   "repository": "https://github.com/dschibster/sfdx-org-list-vscode-extension",
   "engines": {
     "vscode": "^1.40.0"
@@ -104,8 +104,8 @@
     "@types/vscode": "^1.40.0",
     "glob": "^7.1.5",
     "mocha": "^6.2.2",
-    "typescript": "^3.6.4",
     "tslint": "^5.20.0",
+    "typescript": "^3.6.4",
     "vscode-test": "^1.2.2"
   }
 }
