@@ -12,7 +12,8 @@ export class Org extends vscode.TreeItem {
     private orgListProvider: OrgListProvider,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState
   ) {
-    super(alias, collapsibleState);
+    
+    super(alias == null ? username : alias, collapsibleState);
   }
 
   get tooltip(): string {
@@ -21,6 +22,10 @@ export class Org extends vscode.TreeItem {
 
   get description(): string {
     return this.username;
+  }
+
+  get orgName(): string {
+    return this.alias != null ? this.alias : this.username;
   }
 
   open() {
@@ -33,11 +38,11 @@ export class Org extends vscode.TreeItem {
       () => {
         return new Promise((resolve, reject) => {
           cp.exec(
-            "sf org open -o " + this.username,
+            "sf org open -o " + this.orgName,
             null,
             (error, stdout, stderr) => {
               if (error) {
-                vscode.window.showErrorMessage(`Error opening ${this.alias}.`);
+                vscode.window.showErrorMessage(`Error opening ${this.orgName}.`);
                 reject();
               }
               resolve();
@@ -82,10 +87,51 @@ export class Org extends vscode.TreeItem {
     });
   }
 
+
+  default() {
+    vscode.window
+      .showInformationMessage(
+        `Do you want to set ${this.orgName} as your default Org?`,
+        "No",
+        "Yes"
+      )
+      .then(selection => {
+        if (selection === "Yes") {
+          vscode.window.withProgress(
+            {
+              location: vscode.ProgressLocation.Notification,
+              title: `Setting ${this.orgName} as default.`,
+              cancellable: false
+            },
+            () => {
+              return new Promise((resolve, reject) => {
+                cp.exec(
+                  "sf config set target-org=" + this.orgName,
+                  null,
+                  (error, stdout, stderr) => {
+                    if (error) {
+                      vscode.window.showErrorMessage(
+                        `Error setting default to ${this.orgName}.`
+                      );
+                      reject();
+                    }
+                    vscode.window.showInformationMessage(
+                      `Set ${this.orgName} to default.`
+                    );
+                    resolve();
+                  }
+                );
+              });
+            }
+          );
+        }
+      });
+  }
+
   logout() {
     vscode.window
       .showInformationMessage(
-        `Are you sure you want to log out of ${this.alias}?`,
+        `Are you sure you want to log out of ${this.orgName}?`,
         "Cancel",
         "Logout"
       )
@@ -94,23 +140,23 @@ export class Org extends vscode.TreeItem {
           vscode.window.withProgress(
             {
               location: vscode.ProgressLocation.Notification,
-              title: `Logging out ${this.alias}.`,
+              title: `Logging out ${this.orgName}.`,
               cancellable: false
             },
             () => {
               return new Promise((resolve, reject) => {
                 cp.exec(
-                  "sf org logout --no-prompt -o " + this.username,
+                  "sf org logout --no-prompt -o " + this.orgName,
                   null,
                   (error, stdout, stderr) => {
                     if (error) {
                       vscode.window.showErrorMessage(
-                        `Error logging out of ${this.alias}.`
+                        `Error logging out of ${this.orgName}.`
                       );
                       reject();
                     }
                     vscode.window.showInformationMessage(
-                      `Logged out of ${this.alias}.`
+                      `Logged out of ${this.orgName}.`
                     );
                     this.orgListProvider.removeItem(this);
                     resolve();
@@ -126,7 +172,7 @@ export class Org extends vscode.TreeItem {
   delete() {
     vscode.window
       .showInformationMessage(
-        `Are you sure you want to delete ${this.alias}?`,
+        `Are you sure you want to delete ${this.orgName}?`,
         "Cancel",
         "Delete"
       )
@@ -135,23 +181,23 @@ export class Org extends vscode.TreeItem {
           vscode.window.withProgress(
             {
               location: vscode.ProgressLocation.Notification,
-              title: `Deleting ${this.alias}.`,
+              title: `Deleting ${this.orgName}.`,
               cancellable: false
             },
             () => {
               return new Promise((resolve, reject) => {
                 cp.exec(
-                  "sf org delete scratch --no-prompt -o " + this.username,
+                  "sf org delete scratch --no-prompt -o " + this.orgName,
                   null,
                   (error, stdout, stderr) => {
                     if (error) {
                       vscode.window.showErrorMessage(
-                        `Error deleting ${this.alias}.`
+                        `Error deleting ${this.orgName}.`
                       );
                       reject();
                     }
                     vscode.window.showInformationMessage(
-                      `Deleted ${this.alias}.`
+                      `Deleted ${this.orgName}.`
                     );
                     this.orgListProvider.removeItem(this);
                     resolve();

@@ -2,8 +2,8 @@
   "name": "sfdx-org-list",
   "displayName": "SFDX Org List",
   "description": "Displays a list of authenticated orgs for quick logins",
-  "version": "1.1.0",
-  "publisher": "philstennett",
+  "version": "1.1.3",
+  "publisher": "dschibster",
   "repository": "https://github.com/dschibster/sfdx-org-list-vscode-extension",
   "engines": {
     "vscode": "^1.40.0"
@@ -51,6 +51,10 @@
         }
       },
       {
+        "command": "org.default",
+        "title": "Set Default"
+      },
+      {
         "command": "org.rename",
         "title": "Change Alias"
       },
@@ -76,6 +80,10 @@
           "command": "org.open",
           "when": "viewItem == non-scratch-org || viewItem == scratch-org",
           "group": "inline"
+        },
+        {
+          "command": "org.default",
+          "when": "viewItem == non-scratch-org || viewItem == scratch-org"
         },
         {
           "command": "org.rename",
@@ -104,8 +112,12 @@
     "@types/vscode": "^1.40.0",
     "glob": "^7.1.5",
     "mocha": "^6.2.2",
-    "typescript": "^3.6.4",
     "tslint": "^5.20.0",
+    "typescript": "^3.6.4",
     "vscode-test": "^1.2.2"
+  },
+  "dependencies": {
+    "@vscode/vsce": "^3.6.0",
+    "vsce": "^2.15.0"
   }
 }
