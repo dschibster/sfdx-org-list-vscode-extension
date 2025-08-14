@@ -11,6 +11,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     vscode.commands.registerCommand("org.open", (org: Org) => org.open());
+    vscode.commands.registerCommand("org.default", (org: Org) => org.default());
     vscode.commands.registerCommand("org.rename", (org: Org) => org.rename());
     vscode.commands.registerCommand("org.logout", (org: Org) => org.logout());
     vscode.commands.registerCommand("org.delete", (org: Org) => org.delete());

@@ -12,7 +12,8 @@ export class Org extends vscode.TreeItem {
     private orgListProvider: OrgListProvider,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState
   ) {
-    super(alias, collapsibleState);
+    
+    super(alias == null ? username : alias, collapsibleState);
   }
 
   get tooltip(): string {
@@ -24,7 +25,7 @@ export class Org extends vscode.TreeItem {
   }
 
   get orgName(): string {
-    return (this.alias != null) ? this.alias : this.username;
+    return this.alias != null ? this.alias : this.username;
   }
 
   open() {
@@ -37,7 +38,7 @@ export class Org extends vscode.TreeItem {
       () => {
         return new Promise((resolve, reject) => {
           cp.exec(
-            "sf org open -o " + this.username,
+            "sf org open -o " + this.orgName,
             null,
             (error, stdout, stderr) => {
               if (error) {
@@ -86,6 +87,47 @@ export class Org extends vscode.TreeItem {
     });
   }
 
+
+  default() {
+    vscode.window
+      .showInformationMessage(
+        `Do you want to set ${this.orgName} as your default Org?`,
+        "No",
+        "Yes"
+      )
+      .then(selection => {
+        if (selection === "Yes") {
+          vscode.window.withProgress(
+            {
+              location: vscode.ProgressLocation.Notification,
+              title: `Setting ${this.orgName} as default.`,
+              cancellable: false
+            },
+            () => {
+              return new Promise((resolve, reject) => {
+                cp.exec(
+                  "sf config set target-org=" + this.orgName,
+                  null,
+                  (error, stdout, stderr) => {
+                    if (error) {
+                      vscode.window.showErrorMessage(
+                        `Error setting default to ${this.orgName}.`
+                      );
+                      reject();
+                    }
+                    vscode.window.showInformationMessage(
+                      `Set ${this.orgName} to default.`
+                    );
+                    resolve();
+                  }
+                );
+              });
+            }
+          );
+        }
+      });
+  }
+
   logout() {
     vscode.window
       .showInformationMessage(
@@ -104,7 +146,7 @@ export class Org extends vscode.TreeItem {
             () => {
               return new Promise((resolve, reject) => {
                 cp.exec(
-                  "sf org logout --no-prompt -o " + this.username,
+                  "sf org logout --no-prompt -o " + this.orgName,
                   null,
                   (error, stdout, stderr) => {
                     if (error) {
@@ -145,7 +187,7 @@ export class Org extends vscode.TreeItem {
             () => {
               return new Promise((resolve, reject) => {
                 cp.exec(
-                  "sf org delete scratch --no-prompt -o " + this.username,
+                  "sf org delete scratch --no-prompt -o " + this.orgName,
                   null,
                   (error, stdout, stderr) => {
                     if (error) {
