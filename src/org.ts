@@ -4,6 +4,8 @@ import * as cp from "child_process";
 import { OrgListProvider } from "./orgListProvider";
 
 export class Org extends vscode.TreeItem {
+  public isFavorite: boolean = false;
+
   constructor(
     public alias: string,
     public username: string,
@@ -28,6 +30,27 @@ export class Org extends vscode.TreeItem {
 
   get orgName(): string {
     return this.alias != null ? this.alias : this.username;
+  }
+
+  get displayName(): string {
+    return this.isFavorite ? `⭐ ${this.orgName}` : this.orgName;
+  }
+
+  async toggleFavorite(): Promise<void> {
+    this.isFavorite = !this.isFavorite;
+    
+    // Update the label to show/hide the star
+    this.label = this.displayName;
+    
+    // Save favorites to extension storage
+    await this.orgListProvider.saveFavorites();
+    
+    // Refresh the tree to show updated order
+    this.orgListProvider.refresh();
+    
+    // Show feedback to user
+    const action = this.isFavorite ? "added to" : "removed from";
+    vscode.window.showInformationMessage(`${this.orgName} ${action} favorites.`);
   }
 
   async open(): Promise<void> {
@@ -59,7 +82,7 @@ export class Org extends vscode.TreeItem {
     const name = await vscode.window.showInputBox();
     if (name) {
       this.alias = name;
-      this.label = name;
+      this.label = this.displayName;
       
       return vscode.window.withProgress(
         {
@@ -90,41 +113,33 @@ export class Org extends vscode.TreeItem {
   }
 
   async default(): Promise<void> {
-    const selection = await vscode.window.showInformationMessage(
-      `Do you want to set ${this.orgName} as your default Org?`,
-      "No",
-      "Yes"
-    );
-    
-    if (selection === "Yes") {
-      return vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Notification,
-          title: `Setting ${this.orgName} as default.`,
-          cancellable: false
-        },
-        async () => {
-          return new Promise<void>((resolve, reject) => {
-            cp.exec(
-              "sf config set target-org=" + this.orgName,
-              (error) => {
-                if (error) {
-                  vscode.window.showErrorMessage(
-                    `Error setting default to ${this.orgName}.`
-                  );
-                  reject(error);
-                  return;
-                }
-                vscode.window.showInformationMessage(
-                  `Set ${this.orgName} to default.`
+    return vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: `Setting ${this.orgName} as default.`,
+        cancellable: false
+      },
+      async () => {
+        return new Promise<void>((resolve, reject) => {
+          cp.exec(
+            "sf config set target-org=" + this.orgName,
+            (error) => {
+              if (error) {
+                vscode.window.showErrorMessage(
+                  `Error setting default to ${this.orgName}.`
                 );
-                resolve();
+                reject(error);
+                return;
               }
-            );
-          });
-        }
-      );
-    }
+              vscode.window.showInformationMessage(
+                `Set ${this.orgName} to default.`
+              );
+              resolve();
+            }
+          );
+        });
+      }
+    );
   }
 
   async logout(): Promise<void> {

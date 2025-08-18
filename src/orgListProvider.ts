@@ -4,6 +4,11 @@ import { Org } from "./org";
 
 interface OrgTree {
   result: {
+    devHubs: Array<{
+      alias: string;
+      username: string;
+      connectedStatus: string;
+    }>;
     nonScratchOrgs: Array<{
       alias: string;
       username: string;
@@ -25,13 +30,22 @@ export class OrgListProvider
   readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null> = this
     ._onDidChangeTreeData.event;
 
+  private devHubs: Array<Org> = [];
   private scratchOrgs: Array<Org> = [];
   private nonScratchOrgs: Array<Org> = [];
+  private context: vscode.ExtensionContext | undefined;
+  private isLoading: boolean = true;
 
-  constructor() {}
+  constructor(context?: vscode.ExtensionContext) {
+    this.context = context;
+  }
 
   async init(): Promise<void> {
-    return this.loadOrgList();
+    this.isLoading = true;
+    this._onDidChangeTreeData.fire(undefined);
+    await this.loadOrgList();
+    this.isLoading = false;
+    this._onDidChangeTreeData.fire(undefined);
   }
 
   refresh(): void {
@@ -49,19 +63,44 @@ export class OrgListProvider
 
   async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
     if (element) {
-      return element.label === "Scratch Orgs"
-        ? this.scratchOrgs
-        : this.nonScratchOrgs;
+      if (element.label === "Dev Hubs") {
+        return this.sortOrgsByFavorite(this.devHubs);
+      } else if (element.label === "Scratch Orgs") {
+        return this.sortOrgsByFavorite(this.scratchOrgs);
+      } else {
+        return this.sortOrgsByFavorite(this.nonScratchOrgs);
+      }
     } else {
+      // Show loading state
+      if (this.isLoading) {
+        const loadingItem = new vscode.TreeItem("Loading orgs...", vscode.TreeItemCollapsibleState.None);
+        loadingItem.iconPath = new vscode.ThemeIcon("loading");
+        return [loadingItem];
+      }
+      
       const treeItems: vscode.TreeItem[] = [];
-      if (this.nonScratchOrgs && this.nonScratchOrgs.length > 0) {
+      
+      // Add Dev Hubs first (on top)
+      if (this.devHubs && this.devHubs.length > 0) {
         treeItems.push(
           new vscode.TreeItem(
-            "Non Scratch Orgs",
+            "Dev Hubs",
             vscode.TreeItemCollapsibleState.Expanded
           )
         );
       }
+      
+      // Add Sandboxes / Playgrounds
+      if (this.nonScratchOrgs && this.nonScratchOrgs.length > 0) {
+        treeItems.push(
+          new vscode.TreeItem(
+            "Sandboxes / Playgrounds",
+            vscode.TreeItemCollapsibleState.Expanded
+          )
+        );
+      }
+      
+      // Add Scratch Orgs last
       if (this.scratchOrgs && this.scratchOrgs.length > 0) {
         treeItems.push(
           new vscode.TreeItem(
@@ -70,8 +109,43 @@ export class OrgListProvider
           )
         );
       }
+      
       return treeItems;
     }
+  }
+
+  private sortOrgsByFavorite(orgs: Array<Org>): Array<Org> {
+    return orgs.sort((a, b) => {
+      // Favorites first
+      if (a.isFavorite && !b.isFavorite) return -1;
+      if (!a.isFavorite && b.isFavorite) return 1;
+      
+      // Then alphabetically by name
+      return a.orgName.localeCompare(b.orgName);
+    });
+  }
+
+  async saveFavorites(): Promise<void> {
+    if (!this.context) return;
+
+    const favorites: string[] = [];
+    
+    // Collect all favorite usernames
+    [...this.devHubs, ...this.nonScratchOrgs, ...this.scratchOrgs].forEach(org => {
+      if (org.isFavorite) {
+        favorites.push(org.username);
+      }
+    });
+
+    // Save to extension storage
+    await this.context.globalState.update('favoriteOrgs', favorites);
+  }
+
+  private async loadFavorites(): Promise<string[]> {
+    if (!this.context) return [];
+    
+    const favorites = this.context.globalState.get<string[]>('favoriteOrgs', []);
+    return favorites;
   }
 
   async loadOrgList(): Promise<void> {
@@ -85,43 +159,74 @@ export class OrgListProvider
         return new Promise<void>((resolve, reject) => {
           cp.exec(
             "sf org list --json",
-            (error, stdout) => {
+            async (error, stdout) => {
               if (error) {
                 reject(new Error("Loading org list failed."));
                 return;
               }
               try {
                 const orgTree: OrgTree = JSON.parse(stdout.toString());
+                const favorites = this.context ? await this.loadFavorites() : [];
+                
+                // Load Dev Hubs
+                this.devHubs = [];
+                if (orgTree.result.devHubs) {
+                  for (const org of orgTree.result.devHubs) {
+                    const orgInstance = new Org(
+                      org.alias,
+                      org.username,
+                      org.connectedStatus,
+                      "dev-hub",
+                      this,
+                      vscode.TreeItemCollapsibleState.None
+                    );
+                    orgInstance.isFavorite = favorites.includes(org.username);
+                    orgInstance.label = orgInstance.displayName;
+                    this.devHubs.push(orgInstance);
+                  }
+                }
+                
+                // Load Non Scratch Orgs (Sandboxes / Playgrounds) - exclude dev hubs
                 this.nonScratchOrgs = [];
                 for (const org of orgTree.result.nonScratchOrgs) {
-                  this.nonScratchOrgs.push(
-                    new Org(
-                      org.alias,
-                      org.username,
-                      org.connectedStatus,
-                      "non-scratch",
-                      this,
-                      vscode.TreeItemCollapsibleState.None
-                    )
+                  // Skip if this org is already in dev hubs
+                  const isDevHub = orgTree.result.devHubs.some(devHub => devHub.username === org.username);
+                  if (isDevHub) {
+                    continue;
+                  }
+                  
+                  const orgInstance = new Org(
+                    org.alias,
+                    org.username,
+                    org.connectedStatus,
+                    "non-scratch",
+                    this,
+                    vscode.TreeItemCollapsibleState.None
                   );
+                  orgInstance.isFavorite = favorites.includes(org.username);
+                  orgInstance.label = orgInstance.displayName;
+                  this.nonScratchOrgs.push(orgInstance);
                 }
+                
+                // Load Scratch Orgs
                 this.scratchOrgs = [];
                 for (const org of orgTree.result.scratchOrgs) {
-                  this.scratchOrgs.push(
-                    new Org(
-                      org.alias,
-                      org.username,
-                      org.connectedStatus,
-                      "scratch",
-                      this,
-                      vscode.TreeItemCollapsibleState.None
-                    )
+                  const orgInstance = new Org(
+                    org.alias,
+                    org.username,
+                    org.connectedStatus,
+                    "scratch",
+                    this,
+                    vscode.TreeItemCollapsibleState.None
                   );
+                  orgInstance.isFavorite = favorites.includes(org.username);
+                  orgInstance.label = orgInstance.displayName;
+                  this.scratchOrgs.push(orgInstance);
                 }
                 resolve();
-                             } catch {
-                 reject(new Error("Failed to parse org list response."));
-               }
+              } catch {
+                reject(new Error("Failed to parse org list response."));
+              }
             }
           );
         });
@@ -130,7 +235,11 @@ export class OrgListProvider
   }
 
   removeItem(org: Org): void {
-    if (org.type === "non-scratch") {
+    if (org.type === "dev-hub") {
+      this.devHubs = this.devHubs.filter(
+        (x) => x.username !== org.username
+      );
+    } else if (org.type === "non-scratch") {
       this.nonScratchOrgs = this.nonScratchOrgs.filter(
         (x) => x.username !== org.username
       );

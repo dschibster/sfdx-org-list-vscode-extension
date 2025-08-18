@@ -3,22 +3,31 @@ import { OrgListProvider } from "./orgListProvider";
 import { Org } from "./org";
 
 export function activate(context: vscode.ExtensionContext): void {
-  const orgListProvider = new OrgListProvider();
+  const orgListProvider = new OrgListProvider(context);
   
-  orgListProvider.init().then(() => {
-    vscode.window.registerTreeDataProvider("org-list", orgListProvider);
-    
-    context.subscriptions.push(
-      vscode.commands.registerCommand("org-list.reload", () =>
-        orgListProvider.reload()
-      ),
-      vscode.commands.registerCommand("org.open", (org: Org) => org.open()),
-      vscode.commands.registerCommand("org.default", (org: Org) => org.default()),
-      vscode.commands.registerCommand("org.rename", (org: Org) => org.rename()),
-      vscode.commands.registerCommand("org.logout", (org: Org) => org.logout()),
-      vscode.commands.registerCommand("org.delete", (org: Org) => org.delete())
-    );
-  });
+  // Register the tree data provider immediately so the view is available
+  vscode.window.registerTreeDataProvider("org-list", orgListProvider);
+  
+  // Register commands immediately
+  context.subscriptions.push(
+    vscode.commands.registerCommand("org-list.reload", () =>
+      orgListProvider.reload()
+    ),
+    vscode.commands.registerCommand("org.open", (org: Org) => org.open()),
+    vscode.commands.registerCommand("org.default", (org: Org) => org.default()),
+    vscode.commands.registerCommand("org.rename", (org: Org) => org.rename()),
+    vscode.commands.registerCommand("org.logout", (org: Org) => org.logout()),
+    vscode.commands.registerCommand("org.delete", (org: Org) => org.delete()),
+    vscode.commands.registerCommand("org.toggleFavorite", (org: Org) => org.toggleFavorite())
+  );
+  
+  // Load the org list immediately when VS Code starts
+  // Use setTimeout to ensure VS Code is fully initialized
+  setTimeout(() => {
+    orgListProvider.init().catch((error) => {
+      vscode.window.showErrorMessage(`Failed to load org list: ${error.message}`);
+    });
+  }, 100);
 }
 
 export function deactivate(): void {
