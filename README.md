@@ -1,4 +1,4 @@
-# SFDX Org List
+# Salesforce Org List
 
 Displays a list of authenticated Salesforce orgs for quick login access and management.
 **Adjusted to run off of `sf` CLI commands**
