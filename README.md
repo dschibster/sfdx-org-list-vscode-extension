@@ -3,7 +3,7 @@
 Displays a list of authenticated Salesforce orgs for quick login access and management.
 **Adjusted to run off of `sf` CLI commands**
 
-![Extension Screenshot](/media/screenshot.png)
+![Extension Screenshot](/media/screenshot2.png)
 
 ## Features
 
