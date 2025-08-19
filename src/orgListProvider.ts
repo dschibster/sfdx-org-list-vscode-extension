@@ -35,6 +35,7 @@ export class OrgListProvider
   private nonScratchOrgs: Array<Org> = [];
   private context: vscode.ExtensionContext | undefined;
   private isLoading: boolean = true;
+  private showHiddenOrgs: boolean = false;
 
   constructor(context?: vscode.ExtensionContext) {
     this.context = context;
@@ -115,7 +116,10 @@ export class OrgListProvider
   }
 
   private sortOrgsByFavorite(orgs: Array<Org>): Array<Org> {
-    return orgs.sort((a, b) => {
+    // Filter out hidden orgs if not showing them
+    const visibleOrgs = this.showHiddenOrgs ? orgs : orgs.filter(org => !org.isHidden);
+    
+    return visibleOrgs.sort((a, b) => {
       // Favorites first
       if (a.isFavorite && !b.isFavorite) return -1;
       if (!a.isFavorite && b.isFavorite) return 1;
@@ -141,11 +145,42 @@ export class OrgListProvider
     await this.context.globalState.update('favoriteOrgs', favorites);
   }
 
+  async saveHiddenOrgs(): Promise<void> {
+    if (!this.context) return;
+
+    const hiddenOrgs: string[] = [];
+    
+    // Collect all hidden usernames
+    [...this.devHubs, ...this.nonScratchOrgs, ...this.scratchOrgs].forEach(org => {
+      if (org.isHidden) {
+        hiddenOrgs.push(org.username);
+      }
+    });
+
+    // Save to extension storage
+    await this.context.globalState.update('hiddenOrgs', hiddenOrgs);
+  }
+
   private async loadFavorites(): Promise<string[]> {
     if (!this.context) return [];
     
     const favorites = this.context.globalState.get<string[]>('favoriteOrgs', []);
     return favorites;
+  }
+
+  private async loadHiddenOrgs(): Promise<string[]> {
+    if (!this.context) return [];
+    
+    const hiddenOrgs = this.context.globalState.get<string[]>('hiddenOrgs', []);
+    return hiddenOrgs;
+  }
+
+  async toggleShowHiddenOrgs(): Promise<void> {
+    this.showHiddenOrgs = !this.showHiddenOrgs;
+    this._onDidChangeTreeData.fire(undefined);
+    
+    const action = this.showHiddenOrgs ? "showing" : "hiding";
+    vscode.window.showInformationMessage(`${action} hidden orgs.`);
   }
 
   async loadOrgList(): Promise<void> {
@@ -167,6 +202,7 @@ export class OrgListProvider
               try {
                 const orgTree: OrgTree = JSON.parse(stdout.toString());
                 const favorites = this.context ? await this.loadFavorites() : [];
+                const hiddenOrgs = this.context ? await this.loadHiddenOrgs() : [];
                 
                 // Load Dev Hubs
                 this.devHubs = [];
@@ -181,6 +217,7 @@ export class OrgListProvider
                       vscode.TreeItemCollapsibleState.None
                     );
                     orgInstance.isFavorite = favorites.includes(org.username);
+                    orgInstance.isHidden = hiddenOrgs.includes(org.username);
                     orgInstance.label = orgInstance.displayName;
                     this.devHubs.push(orgInstance);
                   }
@@ -204,6 +241,7 @@ export class OrgListProvider
                     vscode.TreeItemCollapsibleState.None
                   );
                   orgInstance.isFavorite = favorites.includes(org.username);
+                  orgInstance.isHidden = hiddenOrgs.includes(org.username);
                   orgInstance.label = orgInstance.displayName;
                   this.nonScratchOrgs.push(orgInstance);
                 }
@@ -220,6 +258,7 @@ export class OrgListProvider
                     vscode.TreeItemCollapsibleState.None
                   );
                   orgInstance.isFavorite = favorites.includes(org.username);
+                  orgInstance.isHidden = hiddenOrgs.includes(org.username);
                   orgInstance.label = orgInstance.displayName;
                   this.scratchOrgs.push(orgInstance);
                 }

@@ -13,12 +13,16 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("org-list.reload", () =>
       orgListProvider.reload()
     ),
+    vscode.commands.registerCommand("org-list.toggleShowHidden", () =>
+      orgListProvider.toggleShowHiddenOrgs()
+    ),
     vscode.commands.registerCommand("org.open", (org: Org) => org.open()),
     vscode.commands.registerCommand("org.default", (org: Org) => org.default()),
     vscode.commands.registerCommand("org.rename", (org: Org) => org.rename()),
     vscode.commands.registerCommand("org.logout", (org: Org) => org.logout()),
     vscode.commands.registerCommand("org.delete", (org: Org) => org.delete()),
-    vscode.commands.registerCommand("org.toggleFavorite", (org: Org) => org.toggleFavorite())
+    vscode.commands.registerCommand("org.toggleFavorite", (org: Org) => org.toggleFavorite()),
+    vscode.commands.registerCommand("org.toggleHidden", (org: Org) => org.toggleHidden())
   );
   
   // Load the org list immediately when VS Code starts

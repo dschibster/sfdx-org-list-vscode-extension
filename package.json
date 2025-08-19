@@ -69,12 +69,29 @@
       {
         "command": "org.toggleFavorite",
         "title": "Toggle Favorite"
+      },
+      {
+        "command": "org.toggleHidden",
+        "title": "Hide/Show Org"
+      },
+      {
+        "command": "org-list.toggleShowHidden",
+        "title": "Show/Hide Hidden Orgs",
+        "icon": {
+          "light": "media/hideshow.png",
+          "dark": "media/hideshow.png"
+        }
       }
     ],
     "menus": {
       "view/title": [
         {
           "command": "org-list.reload",
+          "when": "view == org-list",
+          "group": "navigation"
+        },
+        {
+          "command": "org-list.toggleShowHidden",
           "when": "view == org-list",
           "group": "navigation"
         }
@@ -103,6 +120,10 @@
         },
         {
           "command": "org.toggleFavorite",
+          "when": "viewItem == dev-hub-org || viewItem == non-scratch-org || viewItem == scratch-org"
+        },
+        {
+          "command": "org.toggleHidden",
           "when": "viewItem == dev-hub-org || viewItem == non-scratch-org || viewItem == scratch-org"
         }
       ]

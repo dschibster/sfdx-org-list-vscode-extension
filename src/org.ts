@@ -5,6 +5,7 @@ import { OrgListProvider } from "./orgListProvider";
 
 export class Org extends vscode.TreeItem {
   public isFavorite: boolean = false;
+  public isHidden: boolean = false;
 
   constructor(
     public alias: string,
@@ -51,6 +52,20 @@ export class Org extends vscode.TreeItem {
     // Show feedback to user
     const action = this.isFavorite ? "added to" : "removed from";
     vscode.window.showInformationMessage(`${this.orgName} ${action} favorites.`);
+  }
+
+  async toggleHidden(): Promise<void> {
+    this.isHidden = !this.isHidden;
+    
+    // Save hidden orgs to extension storage
+    await this.orgListProvider.saveHiddenOrgs();
+    
+    // Refresh the tree to show updated visibility
+    this.orgListProvider.refresh();
+    
+    // Show feedback to user
+    const action = this.isHidden ? "hidden" : "shown";
+    vscode.window.showInformationMessage(`${this.orgName} is now ${action}.`);
   }
 
   async open(): Promise<void> {
