@@ -2,7 +2,7 @@
   "name": "sf-org-list",
   "displayName": "Salesforce Org List",
   "description": "Displays a list of authenticated orgs for quick logins",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "publisher": "dennisgrzyb",
   "repository": "https://github.com/dschibster/sfdx-org-list-vscode-extension",
   "engines": {
@@ -28,6 +28,11 @@
     "views": {
       "org-list": [
         {
+          "type": "webview",
+          "id": "org-list-pinned",
+          "name": "Pinned"
+        },
+        {
           "id": "org-list",
           "name": "Orgs"
         }
@@ -41,6 +46,19 @@
           "light": "media/refresh.png",
           "dark": "media/refresh.png"
         }
+      },
+      {
+        "command": "org-list.toggleShowHidden",
+        "title": "Show/Hide Hidden Orgs",
+        "icon": {
+          "light": "media/hideshow.png",
+          "dark": "media/hideshow.png"
+        }
+      },
+      {
+        "command": "org-list.createFolder",
+        "title": "New Org Folder",
+        "icon": "$(folder-opened)"
       },
       {
         "command": "org.open",
@@ -67,20 +85,37 @@
         "title": "Delete"
       },
       {
-        "command": "org.toggleFavorite",
-        "title": "Toggle Favorite"
-      },
-      {
         "command": "org.toggleHidden",
         "title": "Hide/Show Org"
       },
       {
-        "command": "org-list.toggleShowHidden",
-        "title": "Show/Hide Hidden Orgs",
-        "icon": {
-          "light": "media/hideshow.png",
-          "dark": "media/hideshow.png"
-        }
+        "command": "org.togglePin",
+        "title": "Pin / Unpin",
+        "icon": "$(pinned)"
+      },
+      {
+        "command": "org.copyAuthUrl",
+        "title": "Copy Auth URL"
+      },
+      {
+        "command": "org.copyLoginCommand",
+        "title": "Copy Login Command"
+      },
+      {
+        "command": "org.assignToFolder",
+        "title": "Move to Folder…"
+      },
+      {
+        "command": "org.removeFromFolder",
+        "title": "Remove from Folder"
+      },
+      {
+        "command": "orgFolder.rename",
+        "title": "Rename Folder"
+      },
+      {
+        "command": "orgFolder.delete",
+        "title": "Delete Folder"
       }
     ],
     "menus": {
@@ -94,37 +129,67 @@
           "command": "org-list.toggleShowHidden",
           "when": "view == org-list",
           "group": "navigation"
+        },
+        {
+          "command": "org-list.createFolder",
+          "when": "view == org-list",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
         {
           "command": "org.open",
-          "when": "viewItem == dev-hub-org || viewItem == non-scratch-org || viewItem == scratch-org",
+          "when": "view == org-list && viewItem =~ /^(dev-hub|non-scratch|scratch)-org/",
+          "group": "inline"
+        },
+        {
+          "command": "org.togglePin",
+          "when": "view == org-list && viewItem =~ /^(dev-hub|non-scratch|scratch)-org/",
           "group": "inline"
         },
         {
           "command": "org.default",
-          "when": "viewItem == dev-hub-org || viewItem == non-scratch-org || viewItem == scratch-org"
+          "when": "view == org-list && viewItem =~ /^(dev-hub|non-scratch|scratch)-org/"
         },
         {
           "command": "org.rename",
-          "when": "viewItem == dev-hub-org || viewItem == non-scratch-org || viewItem == scratch-org"
+          "when": "view == org-list && viewItem =~ /^(dev-hub|non-scratch|scratch)-org/"
         },
         {
           "command": "org.logout",
-          "when": "viewItem == dev-hub-org || viewItem == non-scratch-org"
+          "when": "view == org-list && viewItem =~ /^(dev-hub|non-scratch)-org/"
         },
         {
           "command": "org.delete",
-          "when": "viewItem == scratch-org"
-        },
-        {
-          "command": "org.toggleFavorite",
-          "when": "viewItem == dev-hub-org || viewItem == non-scratch-org || viewItem == scratch-org"
+          "when": "view == org-list && viewItem =~ /^scratch-org/"
         },
         {
           "command": "org.toggleHidden",
-          "when": "viewItem == dev-hub-org || viewItem == non-scratch-org || viewItem == scratch-org"
+          "when": "view == org-list && viewItem =~ /^(dev-hub|non-scratch|scratch)-org/"
+        },
+        {
+          "command": "org.copyAuthUrl",
+          "when": "view == org-list && viewItem =~ /^(dev-hub|non-scratch|scratch)-org/"
+        },
+        {
+          "command": "org.copyLoginCommand",
+          "when": "view == org-list && viewItem =~ /^(dev-hub|non-scratch|scratch)-org/"
+        },
+        {
+          "command": "org.assignToFolder",
+          "when": "view == org-list && viewItem =~ /^(dev-hub|non-scratch|scratch)-org$/"
+        },
+        {
+          "command": "org.removeFromFolder",
+          "when": "view == org-list && viewItem =~ /-in-folder$/"
+        },
+        {
+          "command": "orgFolder.rename",
+          "when": "view == org-list && viewItem == org-folder"
+        },
+        {
+          "command": "orgFolder.delete",
+          "when": "view == org-list && viewItem == org-folder"
         }
       ]
     }

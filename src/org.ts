@@ -1,11 +1,30 @@
 import * as vscode from "vscode";
-import * as path from "path";
 import * as cp from "child_process";
 import { OrgListProvider } from "./orgListProvider";
 
+const TYPE_EMOJI: Record<string, string> = {
+  "dev-hub": "⚙️",
+  "non-scratch": "🧪",
+  "scratch": "⚡",
+};
+
+function statusIcon(status: string): vscode.ThemeIcon {
+  switch ((status ?? "").toLowerCase()) {
+    case "connected":
+      return new vscode.ThemeIcon("cloud", new vscode.ThemeColor("testing.iconPassed"));
+    case "disconnected":
+    case "refreshtokenaautherror":
+      return new vscode.ThemeIcon("cloud", new vscode.ThemeColor("testing.iconFailed"));
+    case "expired":
+      return new vscode.ThemeIcon("cloud", new vscode.ThemeColor("testing.iconQueued"));
+    default:
+      return new vscode.ThemeIcon("cloud", new vscode.ThemeColor("disabledForeground"));
+  }
+}
+
 export class Org extends vscode.TreeItem {
-  public isFavorite: boolean = false;
   public isHidden: boolean = false;
+  public isPinned: boolean = false;
 
   constructor(
     public alias: string,
@@ -16,15 +35,10 @@ export class Org extends vscode.TreeItem {
     public override readonly collapsibleState: vscode.TreeItemCollapsibleState
   ) {
     super(alias == null ? username : alias, collapsibleState);
-    
-    // Set icon path using the new VS Code API pattern
-    this.iconPath = {
-      light: vscode.Uri.file(path.join(__dirname, "..", "..", "media", "cloud.png")),
-      dark: vscode.Uri.file(path.join(__dirname, "..", "..", "media", "cloud.png"))
-    };
-    
-    // Set properties
-    this.tooltip = `Status: ${this.status}`;
+    this.iconPath = statusIcon(status);
+    this.tooltip = new vscode.MarkdownString(
+      `**${alias ?? username}**\n\n${username}\n\nStatus: ${status}`
+    );
     this.description = this.username;
     this.contextValue = this.type + "-org";
   }
@@ -33,39 +47,28 @@ export class Org extends vscode.TreeItem {
     return this.alias != null ? this.alias : this.username;
   }
 
-  get displayName(): string {
-    return this.isFavorite ? `⭐ ${this.orgName}` : this.orgName;
+  get typeEmoji(): string {
+    return TYPE_EMOJI[this.type] ?? "";
   }
 
-  async toggleFavorite(): Promise<void> {
-    this.isFavorite = !this.isFavorite;
-    
-    // Update the label to show/hide the star
-    this.label = this.displayName;
-    
-    // Save favorites to extension storage
-    await this.orgListProvider.saveFavorites();
-    
-    // Refresh the tree to show updated order
-    this.orgListProvider.refresh();
-    
-    // Show feedback to user
-    const action = this.isFavorite ? "added to" : "removed from";
-    vscode.window.showInformationMessage(`${this.orgName} ${action} favorites.`);
+  get displayName(): string {
+    return `${this.typeEmoji} ${this.orgName}`;
   }
 
   async toggleHidden(): Promise<void> {
     this.isHidden = !this.isHidden;
-    
-    // Save hidden orgs to extension storage
     await this.orgListProvider.saveHiddenOrgs();
-    
-    // Refresh the tree to show updated visibility
     this.orgListProvider.refresh();
-    
-    // Show feedback to user
     const action = this.isHidden ? "hidden" : "shown";
     vscode.window.showInformationMessage(`${this.orgName} is now ${action}.`);
+  }
+
+  async togglePin(): Promise<void> {
+    this.isPinned = !this.isPinned;
+    await this.orgListProvider.savePinnedOrgs();
+    this.orgListProvider.refresh();
+    const action = this.isPinned ? "pinned" : "unpinned";
+    vscode.window.showInformationMessage(`${this.orgName} ${action}.`);
   }
 
   async open(): Promise<void> {
@@ -73,54 +76,50 @@ export class Org extends vscode.TreeItem {
       {
         location: vscode.ProgressLocation.Notification,
         title: `Opening ${this.orgName}.`,
-        cancellable: false
+        cancellable: false,
       },
       async () => {
         return new Promise<void>((resolve, reject) => {
-          cp.exec(
-            "sf org open -o " + this.orgName,
-            (error) => {
-              if (error) {
-                vscode.window.showErrorMessage(`Error opening ${this.orgName}.`);
-                reject(error);
-                return;
-              }
-              resolve();
+          cp.exec("sf org open -o " + this.orgName, (error) => {
+            if (error) {
+              vscode.window.showErrorMessage(`Error opening ${this.orgName}.`);
+              reject(error);
+              return;
             }
-          );
+            resolve();
+          });
         });
       }
     );
   }
 
   async rename(): Promise<void> {
-    const name = await vscode.window.showInputBox();
+    const name = await vscode.window.showInputBox({
+      prompt: "Enter new alias",
+      value: this.alias,
+    });
     if (name) {
       this.alias = name;
       this.label = this.displayName;
-      
       return vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
           title: `Changing alias for ${this.username} to ${this.alias}.`,
-          cancellable: false
+          cancellable: false,
         },
         async () => {
           return new Promise<void>((resolve, reject) => {
-            cp.exec(
-              `sf alias set ${this.alias}=${this.username}`,
-              (error) => {
-                if (error) {
-                  vscode.window.showErrorMessage(
-                    `Error changing alias for ${this.username}.`
-                  );
-                  reject(error);
-                  return;
-                }
-                this.orgListProvider.reload();
-                resolve();
+            cp.exec(`sf alias set ${this.alias}=${this.username}`, (error) => {
+              if (error) {
+                vscode.window.showErrorMessage(
+                  `Error changing alias for ${this.username}.`
+                );
+                reject(error);
+                return;
               }
-            );
+              this.orgListProvider.reload();
+              resolve();
+            });
           });
         }
       );
@@ -132,26 +131,23 @@ export class Org extends vscode.TreeItem {
       {
         location: vscode.ProgressLocation.Notification,
         title: `Setting ${this.orgName} as default.`,
-        cancellable: false
+        cancellable: false,
       },
       async () => {
         return new Promise<void>((resolve, reject) => {
-          cp.exec(
-            "sf config set target-org=" + this.orgName,
-            (error) => {
-              if (error) {
-                vscode.window.showErrorMessage(
-                  `Error setting default to ${this.orgName}.`
-                );
-                reject(error);
-                return;
-              }
-              vscode.window.showInformationMessage(
-                `Set ${this.orgName} to default.`
+          cp.exec("sf config set target-org=" + this.orgName, (error) => {
+            if (error) {
+              vscode.window.showErrorMessage(
+                `Error setting default to ${this.orgName}.`
               );
-              resolve();
+              reject(error);
+              return;
             }
-          );
+            vscode.window.showInformationMessage(
+              `Set ${this.orgName} to default.`
+            );
+            resolve();
+          });
         });
       }
     );
@@ -163,13 +159,12 @@ export class Org extends vscode.TreeItem {
       "Cancel",
       "Logout"
     );
-    
     if (selection === "Logout") {
       return vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
           title: `Logging out ${this.orgName}.`,
-          cancellable: false
+          cancellable: false,
         },
         async () => {
           return new Promise<void>((resolve, reject) => {
@@ -196,19 +191,64 @@ export class Org extends vscode.TreeItem {
     }
   }
 
+  private async fetchAuthUrl(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      cp.exec(
+        `sf org display --verbose --json -o ${this.orgName}`,
+        (error, stdout) => {
+          if (error) {
+            reject(new Error(`Failed to retrieve org info for ${this.orgName}.`));
+            return;
+          }
+          try {
+            const result = JSON.parse(stdout);
+            const url: string | undefined = result?.result?.sfdxAuthUrl;
+            if (!url) {
+              reject(new Error(`No SFDX auth URL found for ${this.orgName}. The org may need to be reconnected.`));
+            } else {
+              resolve(url);
+            }
+          } catch {
+            reject(new Error("Failed to parse org display response."));
+          }
+        }
+      );
+    });
+  }
+
+  async copyAuthUrl(): Promise<void> {
+    try {
+      const url = await this.fetchAuthUrl();
+      await vscode.env.clipboard.writeText(url);
+      vscode.window.showInformationMessage(`Auth URL for ${this.orgName} copied to clipboard.`);
+    } catch (e: unknown) {
+      vscode.window.showErrorMessage(e instanceof Error ? e.message : `Failed to get auth URL for ${this.orgName}.`);
+    }
+  }
+
+  async copyLoginCommand(): Promise<void> {
+    try {
+      const url = await this.fetchAuthUrl();
+      const cmd = `echo "${url}" | sf org login sfdx-url -a ${this.orgName} --sfdx-url-stdin`;
+      await vscode.env.clipboard.writeText(cmd);
+      vscode.window.showInformationMessage(`Login command for ${this.orgName} copied to clipboard.`);
+    } catch (e: unknown) {
+      vscode.window.showErrorMessage(e instanceof Error ? e.message : `Failed to get login command for ${this.orgName}.`);
+    }
+  }
+
   async delete(): Promise<void> {
     const selection = await vscode.window.showInformationMessage(
       `Are you sure you want to delete ${this.orgName}?`,
       "Cancel",
       "Delete"
     );
-    
     if (selection === "Delete") {
       return vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
           title: `Deleting ${this.orgName}.`,
-          cancellable: false
+          cancellable: false,
         },
         async () => {
           return new Promise<void>((resolve, reject) => {
