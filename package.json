@@ -2,17 +2,17 @@
   "name": "sf-org-list",
   "displayName": "Salesforce Org List",
   "description": "Displays a list of authenticated orgs for quick logins",
-  "version": "1.1.3",
+  "version": "2.0.0",
   "publisher": "dennisgrzyb",
   "repository": "https://github.com/dschibster/sfdx-org-list-vscode-extension",
   "engines": {
-    "vscode": "^1.40.0"
+    "vscode": "^1.99.0"
   },
   "categories": [
     "Other"
   ],
   "activationEvents": [
-    "onView:org-list"
+    "*"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -65,6 +65,22 @@
       {
         "command": "org.delete",
         "title": "Delete"
+      },
+      {
+        "command": "org.toggleFavorite",
+        "title": "Toggle Favorite"
+      },
+      {
+        "command": "org.toggleHidden",
+        "title": "Hide/Show Org"
+      },
+      {
+        "command": "org-list.toggleShowHidden",
+        "title": "Show/Hide Hidden Orgs",
+        "icon": {
+          "light": "media/hideshow.png",
+          "dark": "media/hideshow.png"
+        }
       }
     ],
     "menus": {
@@ -73,29 +89,42 @@
           "command": "org-list.reload",
           "when": "view == org-list",
           "group": "navigation"
+        },
+        {
+          "command": "org-list.toggleShowHidden",
+          "when": "view == org-list",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
         {
           "command": "org.open",
-          "when": "viewItem == non-scratch-org || viewItem == scratch-org",
+          "when": "viewItem == dev-hub-org || viewItem == non-scratch-org || viewItem == scratch-org",
           "group": "inline"
         },
         {
           "command": "org.default",
-          "when": "viewItem == non-scratch-org || viewItem == scratch-org"
+          "when": "viewItem == dev-hub-org || viewItem == non-scratch-org || viewItem == scratch-org"
         },
         {
           "command": "org.rename",
-          "when": "viewItem == non-scratch-org || viewItem == scratch-org"
+          "when": "viewItem == dev-hub-org || viewItem == non-scratch-org || viewItem == scratch-org"
         },
         {
           "command": "org.logout",
-          "when": "viewItem == non-scratch-org"
+          "when": "viewItem == dev-hub-org || viewItem == non-scratch-org"
         },
         {
           "command": "org.delete",
           "when": "viewItem == scratch-org"
+        },
+        {
+          "command": "org.toggleFavorite",
+          "when": "viewItem == dev-hub-org || viewItem == non-scratch-org || viewItem == scratch-org"
+        },
+        {
+          "command": "org.toggleHidden",
+          "when": "viewItem == dev-hub-org || viewItem == non-scratch-org || viewItem == scratch-org"
         }
       ]
     }
@@ -103,18 +132,22 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "lint:fix": "eslint src --ext ts --fix"
   },
   "devDependencies": {
-    "@types/glob": "^7.1.1",
-    "@types/mocha": "^5.2.7",
-    "@types/node": "^12.11.7",
-    "@types/vscode": "^1.40.0",
-    "glob": "^7.1.5",
-    "mocha": "^6.2.2",
-    "tslint": "^5.20.0",
-    "typescript": "^3.6.4",
-    "vscode-test": "^1.2.2"
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.99.0",
+    "@typescript-eslint/eslint-plugin": "^8.39.1",
+    "@typescript-eslint/parser": "^8.39.1",
+    "eslint": "^8.54.0",
+    "glob": "^10.3.10",
+    "mocha": "^10.2.0",
+    "typescript": "^5.9.2",
+    "vscode-test": "^1.6.1"
   },
   "dependencies": {
     "@vscode/vsce": "^3.6.0",
